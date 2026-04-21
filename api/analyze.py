@@ -15,19 +15,19 @@ def add_cors_headers(response):
 
 
 # ── 健康检测 ───────────────────────────────────────────────────────────────
-@app.route("/api/health", methods=["GET"])
+@app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok", "message": "BarbieChat API is running 💕"})
 
 
 # ── 预检请求处理 ───────────────────────────────────────────────────────────
-@app.route("/api/analyze", methods=["OPTIONS"])
+@app.route("/analyze", methods=["OPTIONS"])
 def options():
     return jsonify({}), 200
 
 
 # ── 核心分析接口 ───────────────────────────────────────────────────────────
-@app.route("/api/analyze", methods=["POST"])
+@app.route("/analyze", methods=["POST"])
 def analyze():
     try:
         data = request.get_json(silent=True) or {}
@@ -105,7 +105,7 @@ def analyze():
 
 
 # ── 每日摘要列表（示例接口，可接入数据库扩展）────────────────────────────
-@app.route("/api/summaries", methods=["GET"])
+@app.route("/summaries", methods=["GET"])
 def summaries():
     # TODO: 从数据库读取历史摘要
     return jsonify({"success": True, "data": [], "message": "暂无历史摘要~"})

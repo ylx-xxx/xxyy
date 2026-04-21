@@ -1,23 +1,20 @@
 {
-  "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "api/analyze.py",
-      "use": "@vercel/python"
+      "source": "/api/analyze",
+      "destination": "/api/analyze"
     },
     {
-      "src": "index.html",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "api/analyze.py"
+      "source": "/api/health",
+      "destination": "/api/analyze"
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/api/summaries",
+      "destination": "/api/analyze"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ]
 }
