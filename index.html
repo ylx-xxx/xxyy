@@ -1,54 +1,339 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BarbieChat - 梦幻情感管家</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BarbieChat 💕 聊天记录分析</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+
+    :root {
+      --barbie-pink: #FF69B4;
+      --barbie-hot: #FF1493;
+      --barbie-light: #FFE4F0;
+      --barbie-pale: #FFF0F8;
+      --barbie-white: #FFFFFF;
+      --barbie-text: #4A2040;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: linear-gradient(135deg, #FFE4F0 0%, #FFF0F8 50%, #FFE4F0 100%);
+      min-height: 100vh;
+      color: var(--barbie-text);
+    }
+
+    header {
+      text-align: center;
+      padding: 40px 20px 20px;
+    }
+    header h1 {
+      font-size: 2.8rem;
+      font-weight: 800;
+      color: var(--barbie-hot);
+      text-shadow: 2px 2px 0 #ffb6d9;
+      letter-spacing: 2px;
+    }
+    header p { color: #c06090; margin-top: 8px; font-size: 1rem; }
+
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: var(--barbie-white);
+      border-radius: 24px;
+      padding: 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 32px rgba(255, 105, 180, 0.15);
+      border: 2px solid #FFD6EC;
+    }
+
+    .card h2 {
+      font-size: 1.2rem;
+      color: var(--barbie-hot);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 180px;
+      border: 2px solid #FFB6D9;
+      border-radius: 16px;
+      padding: 16px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+      resize: vertical;
+      color: var(--barbie-text);
+      background: var(--barbie-pale);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    textarea:focus { border-color: var(--barbie-hot); }
+    textarea::placeholder { color: #d4a0be; }
+
+    button#analyzeBtn {
+      display: block;
+      width: 100%;
+      margin-top: 16px;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--barbie-pink), var(--barbie-hot));
+      color: white;
+      border: none;
+      border-radius: 50px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: transform 0.1s, box-shadow 0.2s;
+      box-shadow: 0 4px 16px rgba(255, 20, 147, 0.3);
+    }
+    button#analyzeBtn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(255, 20, 147, 0.4);
+    }
+    button#analyzeBtn:active { transform: translateY(0); }
+    button#analyzeBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    #loading {
+      display: none;
+      text-align: center;
+      padding: 24px;
+      color: var(--barbie-hot);
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .dots { animation: blink 1.2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    #result { display: none; }
+
+    .sentiment-bar {
+      height: 12px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #FF69B4, #FF1493);
+      margin: 8px 0;
+      transition: width 1s ease;
+    }
+
+    .tag {
+      display: inline-block;
+      background: var(--barbie-light);
+      color: var(--barbie-hot);
+      border-radius: 50px;
+      padding: 4px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin: 4px;
+    }
+
+    .event-item {
+      background: var(--barbie-pale);
+      border-left: 4px solid var(--barbie-pink);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin: 8px 0;
+      font-size: 0.9rem;
+    }
+    .event-item .type-badge {
+      display: inline-block;
+      background: var(--barbie-hot);
+      color: white;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 50px;
+      margin-left: 8px;
+    }
+
+    .advice-box {
+      background: linear-gradient(135deg, #FFE4F0, #FFD6EC);
+      border-radius: 16px;
+      padding: 16px 20px;
+      font-style: italic;
+      color: var(--barbie-hot);
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    #errorMsg {
+      display: none;
+      background: #fff0f0;
+      border: 2px solid #ffb3b3;
+      border-radius: 16px;
+      padding: 16px;
+      color: #cc4444;
+      margin-top: 16px;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1 class="logo">✨ BarbieChat ✨</h1>
-            <p class="subtitle">欢迎来到BarbieChat~ 请粘贴你的聊天记录吧！</p>
-        </header>
 
-        <main>
-            <!-- 输入区 -->
-            <section class="input-section">
-                <div class="steps">
-                    <span>👑 第一步：复制聊天记录</span>
-                    <span>👑 第二步：粘贴到下方</span>
-                    <span>👑 第三步：点击魔法分析</span>
-                </div>
-                <textarea id="chatInput" placeholder="在这里粘贴你的聊天记录吧！AI会帮你分析哦~"></textarea>
-                <input type="date" id="chatDate" class="date-picker">
-                <button id="analyzeBtn" class="magic-btn">💕 开始魔法分析 💕</button>
-            </section>
+<header>
+  <h1>💕 BarbieChat</h1>
+  <p>让 AI 帮你解读聊天记录的每一份情感与温度</p>
+</header>
 
-            <!-- 加载动画 -->
-            <div id="loading" class="loading hidden">
-                <span class="star">⭐</span><span class="star">💖</span><span class="star">⭐</span>
-                <p>AI正在分析中，请稍候~</p>
-            </div>
+<div class="container">
+  <!-- 输入区 -->
+  <div class="card">
+    <h2>💬 粘贴你的聊天记录</h2>
+    <textarea id="chatInput"
+      placeholder="在这里粘贴你的聊天记录吧！AI 会帮你分析哦~
+      
+例如：
+[10:30] 小明: 今天心情不太好...
+[10:31] 我: 怎么了？发生什么事情了吗？
+[10:32] 小明: 考试没考好，有点难过
+..."></textarea>
+    <button id="analyzeBtn" onclick="analyze()">✨ 开始分析 ✨</button>
+    <div id="loading">💕 AI 魔法分析中，请稍候 <span class="dots">...</span></div>
+    <div id="errorMsg"></div>
+  </div>
 
-            <!-- 结果展示区 -->
-            <section id="resultSection" class="result-section hidden">
-                <div class="result-card">
-                    <h3>🔮 今日情感透视</h3>
-                    <p id="moodResult" class="mood-text"></p>
-                </div>
-            </section>
-
-            <!-- 历史记录区 -->
-            <section class="history-section">
-                <h2>🎀 历史记忆口袋 🎀</h2>
-                <div id="historyList" class="history-list">
-                    <!-- 动态生成 -->
-                </div>
-            </section>
-        </main>
+  <!-- 结果区 -->
+  <div id="result">
+    <div class="card">
+      <h2>💖 情感分析</h2>
+      <div id="sentimentDesc" style="margin-bottom:12px;font-size:0.95rem;"></div>
+      <div style="background:#fff0f8;border-radius:8px;overflow:hidden;height:12px;">
+        <div class="sentiment-bar" id="sentimentBar" style="width:0%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#c06090;margin-top:4px;">
+        <span>负面 😔</span><span>情感指数</span><span>正面 😊</span>
+      </div>
+      <div style="margin-top:14px;" id="emotionTags"></div>
     </div>
-    <script src="script.js"></script>
+
+    <div class="card">
+      <h2>📝 今日摘要</h2>
+      <p id="summaryText" style="line-height:1.8;font-size:0.95rem;"></p>
+    </div>
+
+    <div class="card" id="eventsCard">
+      <h2>📅 识别到的事件</h2>
+      <div id="eventsList"></div>
+    </div>
+
+    <div class="card" id="relCard">
+      <h2>👥 提到的人物</h2>
+      <div id="relList"></div>
+    </div>
+
+    <div class="card">
+      <h2>🔑 关键词</h2>
+      <div id="keywordList"></div>
+    </div>
+
+    <div class="card">
+      <h2>💌 小建议</h2>
+      <div class="advice-box" id="adviceText"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function analyze() {
+  const text = document.getElementById('chatInput').value.trim();
+  const btn = document.getElementById('analyzeBtn');
+  const loading = document.getElementById('loading');
+  const result = document.getElementById('result');
+  const errorMsg = document.getElementById('errorMsg');
+
+  if (!text) {
+    alert('请先粘贴聊天记录哦~ 💕');
+    return;
+  }
+
+  btn.disabled = true;
+  loading.style.display = 'block';
+  result.style.display = 'none';
+  errorMsg.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+
+    const json = await res.json();
+
+    if (!res.ok || json.error) {
+      throw new Error(json.error || '分析失败，请重试~');
+    }
+
+    const d = json.data;
+    renderResult(d);
+    result.style.display = 'block';
+    result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch (err) {
+    errorMsg.textContent = '😢 ' + (err.message || '出错了，请稍后重试~');
+    errorMsg.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
+function renderResult(d) {
+  // 情感
+  const s = d.sentiment || {};
+  document.getElementById('sentimentDesc').textContent =
+    `整体情感：${s.overall || '--'}　${s.description || ''}`;
+  setTimeout(() => {
+    document.getElementById('sentimentBar').style.width = ((s.score || 5) * 10) + '%';
+  }, 100);
+  const emotionEl = document.getElementById('emotionTags');
+  emotionEl.innerHTML = (s.emotions || []).map(e => `<span class="tag">${e}</span>`).join('');
+
+  // 摘要
+  document.getElementById('summaryText').textContent = d.summary || '暂无摘要';
+
+  // 事件
+  const events = d.events || [];
+  const eventsCard = document.getElementById('eventsCard');
+  if (events.length === 0) {
+    eventsCard.style.display = 'none';
+  } else {
+    eventsCard.style.display = '';
+    document.getElementById('eventsList').innerHTML = events.map(e =>
+      `<div class="event-item">
+        ${e.date ? `<span style="color:#c06090;font-size:0.82rem;">📅 ${e.date}</span>` : ''}
+        <span class="type-badge">${e.type}</span>
+        <div style="margin-top:4px;">${e.content}</div>
+      </div>`
+    ).join('');
+  }
+
+  // 人物关系
+  const rels = d.relationships || [];
+  const relCard = document.getElementById('relCard');
+  if (rels.length === 0) {
+    relCard.style.display = 'none';
+  } else {
+    relCard.style.display = '';
+    document.getElementById('relList').innerHTML = rels.map(r =>
+      `<span class="tag">👤 ${r.name}（${r.relation}）</span>`
+    ).join('');
+  }
+
+  // 关键词
+  document.getElementById('keywordList').innerHTML =
+    (d.keywords || []).map(k => `<span class="tag">#${k}</span>`).join('');
+
+  // 建议
+  document.getElementById('adviceText').textContent = d.advice || '继续加油哦~ 💕';
+}
+</script>
 </body>
 </html>

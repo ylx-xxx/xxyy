@@ -1,99 +1,116 @@
+from flask import Flask, request, jsonify
+import anthropic
 import json
 import os
-from aip import AipNlp
 
-# ================= 配置区 ================= #
-API_KEY = os.environ.get("BAIDU_API_KEY", "")
-SECRET_KEY = os.environ.get("BAIDU_SECRET_KEY", "")
-CLIENT = AipNlp(API_KEY, SECRET_KEY) if API_KEY and SECRET_KEY else None  # 初始化百度NLP客户端
+app = Flask(__name__)
 
-# 数据库文件路径（Vercel允许/tmp临时读写，冷启动会清空）
-DB_FILE = "/tmp/chat_history.json"
+# ── 允许跨域（前后端分离时需要）──────────────────────────────────────────
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response
 
-# ================= 数据库操作区 ================= #
-def read_db():
-    """读取本地JSON数据库"""
-    if not os.path.exists(DB_FILE):
-        return []
-    with open(DB_FILE, "r", encoding="utf-8") as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            return []
 
-def write_db(data):
-    """写入本地JSON数据库"""
-    with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+# ── 健康检测 ───────────────────────────────────────────────────────────────
+@app.route("/api/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok", "message": "BarbieChat API is running 💕"})
 
-# ================= 百度API调用区 ================= #
-def analyze_sentiment(text):
-    """调用百度情感倾向分析API（使用SDK封装方法）"""
-    if not CLIENT:
-        return {"error": "百度API Key或Secret Key未配置，请在Vercel环境变量中设置"}
+
+# ── 预检请求处理 ───────────────────────────────────────────────────────────
+@app.route("/api/analyze", methods=["OPTIONS"])
+def options():
+    return jsonify({}), 200
+
+
+# ── 核心分析接口 ───────────────────────────────────────────────────────────
+@app.route("/api/analyze", methods=["POST"])
+def analyze():
     try:
-        # 使用AipNlp的sentimentClassify方法（自动处理Token）
-        result = CLIENT.sentimentClassify(text)
-        if "items" in result:
-            item = result["items"][0]
-            sentiment_prob = item.get("sentiment", 2)  # 0:负面, 1:中性, 2:正面
-            confidence = item.get("confidence", 0)
-            # 映射为芭比风格文案
-            mood = "开心甜蜜" if sentiment_prob == 2 else "有点小情绪" if sentiment_prob == 0 else "平平淡淡"
-            return {"mood": mood, "confidence": confidence}
-        else:
-            return {"error": result.get("error_msg", "分析失败")}
-    except Exception as e:
-        return {"error": f"分析过程中出错: {str(e)}"}
+        data = request.get_json(silent=True) or {}
+        chat_text = data.get("text", "").strip()
 
-# ================= Vercel路由处理区 ================= #
-def handler(event, context):
-    """Vercel Serverless函数入口，根据HTTP方法处理请求"""
-    import json
-    http_method = event['httpMethod']
-    
-    if http_method == 'POST':
-        # 处理POST请求（分析聊天记录）
-        post_data = event['body']
-        try:
-            request_body = json.loads(post_data)
-        except json.JSONDecodeError:
-            return {'statusCode': 400, 'body': json.dumps({"error": "请求体格式错误，请检查JSON格式"})}
-        
-        text = request_body.get("text", "")
-        date = request_body.get("date", "未知日期")
-        if not text:
-            return {'statusCode': 400, 'body': json.dumps({"error": "聊天记录不能为空哦~"})}
-        
-        # 调用AI分析
-        ai_result = analyze_sentiment(text)
-        if "error" in ai_result:
-            return {'statusCode': 500, 'body': json.dumps({"error": ai_result["error"]})}
-        
-        # 准备存入数据库的记录
-        record = {
-            "id": len(read_db()) + 1,
-            "date": date,
-            "preview": text[:50] + "..." if len(text) > 50 else text,
-            "result": ai_result
-        }
-        
-        # 写入数据库
-        db_data = read_db()
-        db_data.append(record)
-        write_db(db_data)
-        
-        # 返回成功结果
-        return {
-            'statusCode': 200,
-            'body': json.dumps({"message": "AI帮你分析好啦！", "data": record})
-        }
-    
-    elif http_method == 'GET':
-        # 处理GET请求（获取历史记录）
-        db_data = read_db()
-        return {'statusCode': 200, 'body': json.dumps({"history": db_data})}
-    
-    else:
-        # 不支持的HTTP方法
-        return {'statusCode': 405, 'body': json.dumps({"error": "不支持的HTTP方法"})}
+        if not chat_text:
+            return jsonify({"error": "聊天记录不能为空哦~"}), 400
+
+        if len(chat_text) > 20000:
+            return jsonify({"error": "聊天记录太长啦，请控制在20000字以内~"}), 400
+
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            return jsonify({"error": "API Key 未配置，请联系管理员~"}), 500
+
+        client = anthropic.Anthropic(api_key=api_key)
+
+        prompt = f"""你是一个温柔体贴的聊天记录分析助手，请分析以下聊天记录，提取关键信息。
+
+聊天记录如下：
+---
+{chat_text}
+---
+
+请严格按照以下 JSON 格式返回分析结果，不要包含任何 Markdown 代码块标记或额外文字：
+{{
+  "sentiment": {{
+    "overall": "正面 或 负面 或 中性",
+    "score": 整数0到10,
+    "description": "一句话描述整体情感氛围",
+    "emotions": ["情绪标签1", "情绪标签2"]
+  }},
+  "events": [
+    {{
+      "date": "提到的日期或时间，没有则填空字符串",
+      "content": "事件简要描述",
+      "type": "社交 或 学习 或 工作 或 家庭 或 情感 或 其他"
+    }}
+  ],
+  "relationships": [
+    {{
+      "name": "人物名称或称谓",
+      "relation": "与对话者的关系描述"
+    }}
+  ],
+  "summary": "整体摘要，100字以内，语气温柔活泼",
+  "keywords": ["关键词1", "关键词2", "关键词3"],
+  "advice": "给用户的一句贴心小建议"
+}}"""
+
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1500,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        raw_text = message.content[0].text.strip()
+
+        # 清理可能混入的 markdown 代码块
+        if raw_text.startswith("```"):
+            raw_text = raw_text.split("```")[1]
+            if raw_text.startswith("json"):
+                raw_text = raw_text[4:]
+        raw_text = raw_text.strip().rstrip("```").strip()
+
+        result = json.loads(raw_text)
+        return jsonify({"success": True, "data": result})
+
+    except json.JSONDecodeError:
+        return jsonify({"error": "AI 返回格式解析失败，请重试~"}), 500
+    except anthropic.APIError as e:
+        return jsonify({"error": f"AI 服务暂时不可用：{str(e)}"}), 502
+    except Exception as e:
+        return jsonify({"error": f"服务器内部错误：{str(e)}"}), 500
+
+
+# ── 每日摘要列表（示例接口，可接入数据库扩展）────────────────────────────
+@app.route("/api/summaries", methods=["GET"])
+def summaries():
+    # TODO: 从数据库读取历史摘要
+    return jsonify({"success": True, "data": [], "message": "暂无历史摘要~"})
+
+
+# ── 本地开发时直接运行 ────────────────────────────────────────────────────
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
