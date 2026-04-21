@@ -1,1 +1,20 @@
-{}
+{
+  "rewrites": [
+    {
+      "source": "/api/analyze",
+      "destination": "/api/analyze.py"
+    },
+    {
+      "source": "/api/health",
+      "destination": "/api/analyze.py"
+    },
+    {
+      "source": "/api/summaries",
+      "destination": "/api/analyze.py"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
