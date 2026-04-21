@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarbieChat - 梦幻情感管家</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="logo">✨ BarbieChat ✨</h1>
+            <p class="subtitle">欢迎来到BarbieChat~ 请粘贴你的聊天记录吧！</p>
+        </header>
+
+        <main>
+            <!-- 输入区 -->
+            <section class="input-section">
+                <div class="steps">
+                    <span>👑 第一步：复制聊天记录</span>
+                    <span>👑 第二步：粘贴到下方</span>
+                    <span>👑 第三步：点击魔法分析</span>
+                </div>
+                <textarea id="chatInput" placeholder="在这里粘贴你的聊天记录吧！AI会帮你分析哦~"></textarea>
+                <input type="date" id="chatDate" class="date-picker">
+                <button id="analyzeBtn" class="magic-btn">💕 开始魔法分析 💕</button>
+            </section>
+
+            <!-- 加载动画 -->
+            <div id="loading" class="loading hidden">
+                <span class="star">⭐</span><span class="star">💖</span><span class="star">⭐</span>
+                <p>AI正在分析中，请稍候~</p>
+            </div>
+
+            <!-- 结果展示区 -->
+            <section id="resultSection" class="result-section hidden">
+                <div class="result-card">
+                    <h3>🔮 今日情感透视</h3>
+                    <p id="moodResult" class="mood-text"></p>
+                </div>
+            </section>
+
+            <!-- 历史记录区 -->
+            <section class="history-section">
+                <h2>🎀 历史记忆口袋 🎀</h2>
+                <div id="historyList" class="history-list">
+                    <!-- 动态生成 -->
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
